@@ -23,19 +23,19 @@ function GlobalTaskForm({ onCancel }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    
-    // Add current tag input if it exists and not already added
+
+    const normalizedSelectedTags = selectedTags.map(tag => tag.trim());
     const finalTagInput = newTagInput.trim();
-    if (finalTagInput && !selectedTags.includes(finalTagInput)) {
-      // Add to global tags list if it's a new tag
-      if (!tags.includes(finalTagInput)) {
-        addTag(finalTagInput);
-      }
-      addTask({ title, description: "", isCompleted: false, tags: [...selectedTags, finalTagInput] });
-    } else {
-      addTask({ title, description: "", isCompleted: false, tags: selectedTags });
+    const preparedTags = finalTagInput && !normalizedSelectedTags.some(selectedTag => selectedTag.toLowerCase() === finalTagInput.toLowerCase())
+      ? [...normalizedSelectedTags, finalTagInput]
+      : normalizedSelectedTags;
+
+    if (preparedTags.length > 0 && finalTagInput && !tags.some(tag => tag.toLowerCase() === finalTagInput.toLowerCase())) {
+      addTag(finalTagInput);
     }
-    
+
+    addTask({ title: title.trim(), description: "", isCompleted: false, tags: preparedTags });
+
     setTitle('');
     setSelectedTags([]);
     setNewTagInput('');
@@ -43,8 +43,9 @@ function GlobalTaskForm({ onCancel }) {
   };
 
   const handleAddTag = (tag) => {
-    if (!tag.trim() || selectedTags.includes(tag.trim())) return;
-    setSelectedTags([...selectedTags, tag.trim()]);
+    const normalizedTag = tag.trim();
+    if (!normalizedTag || selectedTags.some(selectedTag => selectedTag.toLowerCase() === normalizedTag.toLowerCase())) return;
+    setSelectedTags([...selectedTags, normalizedTag]);
     setNewTagInput('');
   };
   

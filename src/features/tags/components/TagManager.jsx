@@ -24,11 +24,19 @@ function TagManager({ onClose }) {
   };
 
   const saveEditedTag = (originalTag) => {
-    if (!editedTagName.trim()) return;
+    const normalizedTag = editedTagName.trim();
+    if (!normalizedTag) return;
+
+    const duplicateExists = tags.some(tag =>
+      tag !== originalTag && tag.toLowerCase() === normalizedTag.toLowerCase()
+    );
+
+    if (duplicateExists) return;
+
     // Update in tag context
-    editTag(originalTag, editedTagName.trim());
+    editTag(originalTag, normalizedTag);
     // Update in task context
-    updateTasksWithEditedTag(originalTag, editedTagName.trim());
+    updateTasksWithEditedTag(originalTag, normalizedTag);
 
     setEditingTag(null);
     setEditedTagName('');

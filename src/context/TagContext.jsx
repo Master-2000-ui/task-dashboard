@@ -5,56 +5,77 @@ import { DataHydrationService } from '../common/utils/DataHydrationService';
 // Create the tag context
 const TagContext = createContext();
 
+const normalizeTag = (tag) => (typeof tag === 'string' ? tag.trim() : '');
+
 // Custom hook for using tag context
 export const useTagContext = () => useContext(TagContext);
 
 // Tag provider component
 export const TagProvider = ({ children }) => {
-  const [tags, setTags] = useState(() => {
-    // Initialize with hydrated data if should hydrate
-    return DataHydrationService.shouldHydrate() 
-      ? DataHydrationService.getInitialTags() 
+  const [customTags, setCustomTags] = useState(() => {
+    const hydratedTags = DataHydrationService.shouldHydrate()
+      ? DataHydrationService.getInitialTags()
       : [];
+
+    return hydratedTags.map(normalizeTag).filter(Boolean);
+  });
+  const [tags, setTags] = useState(() => {
+    const hydratedTags = DataHydrationService.shouldHydrate()
+      ? DataHydrationService.getInitialTags()
+      : [];
+
+    return hydratedTags.map(normalizeTag).filter(Boolean);
   });
   const { tasks } = useTaskContext();
 
-  // Extract and collect all unique tags from tasks when tasks change
   useEffect(() => {
-    const uniqueTags = new Set();
-    
-    // Collect all tags from all tasks
-    tasks.forEach(task => {
-      if (task.tags && Array.isArray(task.tags)) {
-        task.tags.forEach(tag => uniqueTags.add(tag));
-      }
+    const taskTags = tasks.flatMap(task => {
+      if (!Array.isArray(task.tags)) return [];
+      return task.tags.map(normalizeTag).filter(Boolean);
     });
-    
-    // Add these to our existing tags (without duplicates)
-    const updatedTags = Array.from(uniqueTags);
-    setTags(prevTags => {
-      const allTags = new Set([...prevTags, ...updatedTags]);
-      return Array.from(allTags);
-    });
-  }, [tasks]);
+
+    setTags(Array.from(new Set([...customTags, ...taskTags])));
+  }, [customTags, tasks]);
 
   const addTag = (tag) => {
-    if (!tags.includes(tag)) {
-      setTags([...tags, tag]);
-    }
+    const normalizedTag = normalizeTag(tag);
+    if (!normalizedTag) return;
+
+    const alreadyExists = [...customTags, ...tags].some(existingTag =>
+      existingTag.toLowerCase() === normalizedTag.toLowerCase()
+    );
+
+    if (alreadyExists) return;
+
+    setCustomTags(prevTags => Array.from(new Set([...prevTags, normalizedTag])));
   };
 
   const editTag = (oldTag, newTag) => {
-    // Update the tag in our tags list
-    setTags(tags.map(tag => tag === oldTag ? newTag : tag));
-    
-    // The task updates will be handled inside the TaskContext
+    const normalizedOldTag = normalizeTag(oldTag);
+    const normalizedNewTag = normalizeTag(newTag);
+
+    if (!normalizedOldTag || !normalizedNewTag || normalizedOldTag.toLowerCase() === normalizedNewTag.toLowerCase()) {
+      return;
+    }
+
+    const duplicateExists = [...customTags, ...tags].some(existingTag =>
+      existingTag !== normalizedOldTag && existingTag.toLowerCase() === normalizedNewTag.toLowerCase()
+    );
+
+    if (duplicateExists) return;
+
+    setCustomTags(prevTags => prevTags.map(tag =>
+      tag.toLowerCase() === normalizedOldTag.toLowerCase() ? normalizedNewTag : tag
+    ));
   };
 
   const deleteTag = (tagToDelete) => {
-    // Remove the tag from our tags list
-    setTags(tags.filter(tag => tag !== tagToDelete));
-    
-    // The task updates will be handled inside the TaskContext
+    const normalizedTagToDelete = normalizeTag(tagToDelete);
+    if (!normalizedTagToDelete) return;
+
+    setCustomTags(prevTags => prevTags.filter(tag =>
+      tag.toLowerCase() !== normalizedTagToDelete.toLowerCase()
+    ));
   };
 
   const handleManageTags = (operation, oldTag, newTag = null) => {
@@ -62,15 +83,15 @@ export const TagProvider = ({ children }) => {
       case 'add':
         addTag(oldTag);
         break;
-        
+         
       case 'edit':
         editTag(oldTag, newTag);
         break;
-        
+         
       case 'delete':
         deleteTag(oldTag);
         break;
-        
+         
       default:
         break;
     }

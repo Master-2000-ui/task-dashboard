@@ -11,8 +11,8 @@ export const useListContext = () => useContext(ListContext);
 export const ListProvider = ({ children }) => {
   const [taskLists, setTaskLists] = useState(() => {
     // Initialize with hydrated data if should hydrate
-    return DataHydrationService.shouldHydrate() 
-      ? DataHydrationService.getInitialTaskLists() 
+    return DataHydrationService.shouldHydrate()
+      ? DataHydrationService.getInitialTaskLists()
       : [{ id: 'default', title: 'All Tasks', filters: [] }];
   });
 
@@ -22,13 +22,13 @@ export const ListProvider = ({ children }) => {
       title: 'New List',
       filters: []
     };
-    setTaskLists([...taskLists, newList]);
+    setTaskLists(prevTaskLists => [...prevTaskLists, newList]);
     return newList;
   };
 
   const updateTaskList = (id, updates) => {
-    setTaskLists(
-      taskLists.map(list => 
+    setTaskLists(prevTaskLists =>
+      prevTaskLists.map(list =>
         list.id === id ? { ...list, ...updates } : list
       )
     );
@@ -37,7 +37,7 @@ export const ListProvider = ({ children }) => {
   const deleteTaskList = (id) => {
     // Don't allow deleting the default list
     if (id === 'default') return;
-    setTaskLists(taskLists.filter(list => list.id !== id));
+    setTaskLists(prevTaskLists => prevTaskLists.filter(list => list.id !== id));
   };
 
   // Filter tasks according to the task list's filter configuration
@@ -45,7 +45,7 @@ export const ListProvider = ({ children }) => {
     if (!filterConfig || filterConfig.length === 0) {
       return tasks;
     }
-    
+
     return tasks.filter(task => {
       // ALL filters must match (AND logic)
       return filterConfig.every(filter => {
